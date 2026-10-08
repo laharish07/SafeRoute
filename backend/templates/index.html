@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SafeRoute Bangalore</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar">
+    <div class="sidebar-top">
+      <div class="logo">
+        <span class="logo-icon">🛡</span>
+        <span class="logo-text">SafeRoute</span>
+        <span class="logo-badge">Bangalore</span>
+      </div>
+
+      <!-- Weights bar -->
+      <div class="weights-row">
+        <div class="weights-bar" id="weights-bar">
+          <div class="wb-seg wb-safety"  id="wb-safety"  style="width:0%"></div>
+          <div class="wb-seg wb-road"    id="wb-road"    style="width:0%"></div>
+          <div class="wb-seg wb-deadend" id="wb-deadend" style="width:0%"></div>
+          <div class="wb-seg wb-dist"    id="wb-dist"    style="width:0%"></div>
+        </div>
+      </div>
+      <div class="weights-source" id="weights-source"></div>
+
+      <div class="field">
+        <label>Source</label>
+        <div class="field-row">
+          <div class="search-wrap">
+            <div class="input-box">
+              <input id="src-input" class="input" placeholder="Area, landmark or address…"
+                     autocomplete="off" spellcheck="false"
+                     oninput="onSearchInput('src')"
+                     onkeydown="onSearchKey(event,'src')"
+                     onfocus="onSearchFocus('src')"/>
+              <button class="input-clear" id="src-clear" onclick="clearField('src')" tabindex="-1">×</button>
+            </div>
+            <div class="dropdown" id="src-dropdown"></div>
+          </div>
+          <button class="pin-btn" id="src-btn" onclick="setClickMode('src')" title="Click map to set source">📍</button>
+        </div>
+        <div class="pin-confirmed" id="src-confirmed">✓ Source set</div>
+      </div>
+
+      <div class="field">
+        <label>Destination</label>
+        <div class="field-row">
+          <div class="search-wrap">
+            <div class="input-box">
+              <input id="dst-input" class="input" placeholder="Area, landmark or address…"
+                     autocomplete="off" spellcheck="false"
+                     oninput="onSearchInput('dst')"
+                     onkeydown="onSearchKey(event,'dst')"
+                     onfocus="onSearchFocus('dst')"/>
+              <button class="input-clear" id="dst-clear" onclick="clearField('dst')" tabindex="-1">×</button>
+            </div>
+            <div class="dropdown" id="dst-dropdown"></div>
+          </div>
+          <button class="pin-btn" id="dst-btn" onclick="setClickMode('dst')" title="Click map to set destination">🏁</button>
+        </div>
+        <div class="pin-confirmed" id="dst-confirmed">✓ Destination set</div>
+      </div>
+
+      <button class="btn-primary" id="find-btn" onclick="findRoutes()" disabled>Find Route</button>
+      <button class="btn-ghost" onclick="resetAll()">Clear map</button>
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="sidebar-body">
+      <div id="results-section" style="display:none">
+        <div class="recalc-bar" id="recalc-bar"></div>
+
+        <div class="route-card" id="route-card">
+          <div class="rc-header">
+            <span class="rc-icon" id="rc-icon">📏</span>
+            <span class="rc-title" id="rc-title">Shortest Route</span>
+            <span class="rc-badge" id="rc-badge">ACTIVE</span>
+          </div>
+          <div class="rc-stats">
+            <div class="rc-stat"><div class="rc-stat-lbl">Distance</div><div class="rc-stat-val skeleton" id="rc-dist">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div></div>
+            <div class="rc-stat"><div class="rc-stat-lbl">ETA</div><div class="rc-stat-val skeleton" id="rc-eta">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div></div>
+            <div class="rc-stat"><div class="rc-stat-lbl">Safety</div><div class="rc-stat-val skeleton" id="rc-safety">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div></div>
+          </div>
+        </div>
+
+        <!-- Customize Route -->
+        <div class="panel">
+          <div class="panel-title">Customize Route</div>
+          <div class="opt-grid">
+            <button class="opt-btn safety"  id="opt-safety"  onclick="toggleOption('safety')"><span class="opt-icon">🛡</span><span class="opt-label">Safety</span></button>
+            <button class="opt-btn road"    id="opt-road"    onclick="toggleOption('road')"><span class="opt-icon">🛣</span><span class="opt-label">Better Roads</span></button>
+            <button class="opt-btn deadend" id="opt-deadend" onclick="toggleOption('deadend')"><span class="opt-icon">🚫</span><span class="opt-label">No Dead Ends</span></button>
+          </div>
+          <div class="tags" id="option-tags"></div>
+
+          <!-- Learned weight breakdown per dimension -->
+          <div class="weight-breakdown" id="weight-breakdown">
+            <div class="wb-row">
+              <span class="wb-row-lbl" style="color:var(--green)">Safety</span>
+              <div class="wb-track"><div class="wb-fill wb-safety" id="wbd-safety" style="width:0%"></div></div>
+              <span class="wb-pct" id="wbp-safety">0%</span>
+              <div class="wb-dot" id="wbc-safety" title="Consistency"></div>
+            </div>
+            <div class="wb-row">
+              <span class="wb-row-lbl" style="color:var(--blue)">Road</span>
+              <div class="wb-track"><div class="wb-fill wb-road" id="wbd-road" style="width:0%"></div></div>
+              <span class="wb-pct" id="wbp-road">0%</span>
+              <div class="wb-dot" id="wbc-road" title="Consistency"></div>
+            </div>
+            <div class="wb-row">
+              <span class="wb-row-lbl" style="color:var(--amber)">Dead-end</span>
+              <div class="wb-track"><div class="wb-fill wb-deadend" id="wbd-deadend" style="width:0%"></div></div>
+              <span class="wb-pct" id="wbp-deadend">0%</span>
+              <div class="wb-dot" id="wbc-deadend" title="Consistency"></div>
+            </div>
+          </div>
+
+          <!-- Time-of-day weight preview -->
+          <div class="tod-preview" id="tod-preview">
+            <div style="font-family:var(--font-mono);font-size:8px;color:var(--txt-dim);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Weights by time of day</div>
+            <div class="tod-tabs">
+              <div class="tod-tab active" id="tod-morning"   onclick="switchTod('morning')">🌅 Morn</div>
+              <div class="tod-tab"        id="tod-afternoon" onclick="switchTod('afternoon')">☀ Aftn</div>
+              <div class="tod-tab"        id="tod-evening"   onclick="switchTod('evening')">🌆 Eve</div>
+              <div class="tod-tab"        id="tod-night"     onclick="switchTod('night')">🌙 Night</div>
+            </div>
+            <div class="tod-weights">
+              <div class="tod-stat"><div class="tod-stat-lbl">Safety</div><div class="tod-stat-val" id="tod-s" style="color:var(--green)">—</div></div>
+              <div class="tod-stat"><div class="tod-stat-lbl">Road</div><div class="tod-stat-val"   id="tod-r" style="color:var(--blue)">—</div></div>
+              <div class="tod-stat"><div class="tod-stat-lbl">Dead-end</div><div class="tod-stat-val" id="tod-d" style="color:var(--amber)">—</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Route Insights -->
+        <div class="panel">
+          <div class="panel-title">Route Insights</div>
+          <div class="ovl-grid">
+            <button class="ovl-btn crime"       id="ovl-crime"       onclick="toggleOverlay('crime')"><span class="ovl-icon">🚨</span><span class="ovl-spinner"></span><span class="ovl-label">Crime Zones</span></button>
+            <button class="ovl-btn deadendovl"  id="ovl-deadendovl"  onclick="toggleOverlay('deadendovl')"><span class="ovl-icon">⚠️</span><span class="ovl-spinner"></span><span class="ovl-label">Dead Ends</span></button>
+            <button class="ovl-btn roadquality" id="ovl-roadquality" onclick="toggleOverlay('roadquality')"><span class="ovl-icon">🛣</span><span class="ovl-spinner"></span><span class="ovl-label">Road Quality</span></button>
+            <button class="ovl-btn reportsovl"  id="ovl-reportsovl"  onclick="toggleOverlay('reportsovl')"><span class="ovl-icon">📢</span><span class="ovl-spinner"></span><span class="ovl-label">Reports</span></button>
+            <button class="ovl-btn newsovl"      id="ovl-newsovl"      onclick="toggleOverlay('newsovl')"><span class="ovl-icon">📰</span><span class="ovl-spinner"></span><span class="ovl-label">News</span></button>
+          </div>
+          <div class="ovl-error-msg" id="ovl-error-msg"></div>
+          <div class="legend" id="rq-legend">
+            <div class="legend-title">Road type quality</div>
+            <div class="legend-grid" id="legend-grid"></div>
+          </div>
+        </div>
+
+        <hr class="div"/>
+        <button class="btn-ghost" onclick="openFeedback()">Rate this route ★</button>
+      </div>
+
+      <div id="empty-state" class="empty">
+        <div class="empty-icon">🗺</div>
+        <div class="empty-text">Search a place above or click the map<br/>to set source &amp; destination.</div>
+        <br/><span class="hint">📍 = source &nbsp;|&nbsp; 🏁 = destination</span>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      Map data © OpenStreetMap · Geocoding via Nominatim<br/>
+      Routing via pgRouting · Weights via user feedback<br/>
+      <span id="news-feed-badge" class="news-feed-badge">📰 Live crime feed: —</span>
+    </div>
+  </div>
+  <div id="map"></div>
+  <button class="report-fab" id="report-fab" onclick="toggleReportMode()">
+    <span id="report-fab-icon">📢</span> <span id="report-fab-label">Report Issue</span>
+  </button>
+  <div class="report-hint" id="report-hint">Tap the map to place your report</div>
+</div>
+
+<!-- Feedback Modal -->
+<div class="overlay" id="fb-overlay" style="display:none" onclick="if(event.target===this)closeFeedback()">
+  <div class="modal">
+    <h3>Rate your route experience</h3>
+    <div class="modal-subtitle" id="fb-subtitle">Rating route with no options</div>
+
+    <div class="modal-section">
+      <label>Safety feel</label>
+      <div class="stars" id="stars-safety" data-key="safety_rating"></div>
+    </div>
+    <div class="modal-section">
+      <label>Road quality</label>
+      <div class="stars" id="stars-road" data-key="road_rating"></div>
+    </div>
+    <div class="modal-section">
+      <label>Avoided dead-ends</label>
+      <div class="stars" id="stars-deadend" data-key="deadend_rating"></div>
+    </div>
+    <div class="modal-section">
+      <label>Overall trip satisfaction</label>
+      <div class="stars" id="stars-overall" data-key="overall_rating"></div>
+    </div>
+    <div class="modal-section">
+      <label>Would you use this route again?</label>
+      <div class="fb-binary-row">
+        <button class="fb-binary-btn yes" id="reuse-yes" onclick="setReuse(true)">👍 Yes</button>
+        <button class="fb-binary-btn no"  id="reuse-no"  onclick="setReuse(false)">👎 No</button>
+      </div>
+    </div>
+    <div class="modal-section">
+      <label>Journey felt…</label>
+      <div class="fb-dur-row">
+        <button class="fb-dur-btn" id="dur-faster" onclick="setDuration('faster_than_expected')">Faster than expected</button>
+        <button class="fb-dur-btn" id="dur-as"     onclick="setDuration('as_expected')">As expected</button>
+        <button class="fb-dur-btn" id="dur-slower" onclick="setDuration('slower_than_expected')">Slower than expected</button>
+      </div>
+    </div>
+    <div class="modal-section">
+      <label>Comments (optional)</label>
+      <textarea id="fb-comments" placeholder="Any observations…"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-sm btn-cancel" onclick="closeFeedback()">Cancel</button>
+      <button class="btn-sm btn-submit" onclick="submitFeedback()">Submit</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="report-overlay" style="display:none" onclick="if(event.target===this)closeReportModal()">
+  <div class="modal">
+    <h3>Report an issue</h3>
+    <div class="modal-subtitle" id="report-coords">—</div>
+
+    <div class="modal-section">
+      <label>What's the issue?</label>
+      <div class="issue-type-grid" id="issue-type-grid"></div>
+    </div>
+
+    <div class="modal-section">
+      <label>Severity</label>
+      <div class="severity-row" id="severity-row"></div>
+    </div>
+
+    <div class="modal-section">
+      <label>Description (optional)</label>
+      <textarea id="report-description" maxlength="500" placeholder="e.g. deep pothole in the middle lane, streetlight out for 2 weeks…"></textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-sm btn-cancel" onclick="closeReportModal()">Cancel</button>
+      <button class="btn-sm btn-submit" onclick="submitReport()">Submit report</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</html>

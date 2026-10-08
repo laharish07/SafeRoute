@@ -1,0 +1,94 @@
+:root {
+  /* ── Base — genuine night-sky navy, not near-black grey ── */
+  --bg:         #0A0E17;
+  --surface:    #131A2A;
+  --surface-2:  #1A2236;
+  --surface-3:  #212B42;
+  --border:     #263047;
+  --border-2:   #324062;
+
+  /* ── Text ── */
+  --text:       #E8ECF4;
+  --text-dim:   #8E9AB5;
+  --text-faint: #4C5872;
+
+  /* ── Primary accent — "beacon" blue, deliberately distinct from the
+       risk-semantic colors below so they never collide ── */
+  --beacon:      #6C8CFF;
+  --beacon-hi:   #93AAFF;
+  --beacon-dim:  #3C4A80;
+
+  /* ── Risk semantics — the actual safety vocabulary of the app ── */
+  --safe:    #34D399;
+  --safe-bg: rgba(52, 211, 153, 0.12);
+  --caution:    #FBBF24;
+  --caution-bg: rgba(251, 191, 36, 0.12);
+  --danger:    #F87171;
+  --danger-bg: rgba(248, 113, 113, 0.12);
+
+  /* ── Type ── */
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-body:    "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono:    "Space Grotesk", ui-monospace, monospace;
+
+  /* ── Shape & motion ── */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --shadow-panel: 0 12px 40px rgba(2, 4, 10, 0.55);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+::selection { background: var(--beacon-dim); color: var(--text); }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+a { color: var(--beacon-hi); }
+
+input, textarea, select {
+  font-family: inherit;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  outline: none;
+  transition: border-color 0.15s var(--ease);
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--beacon);
+}
+input:focus-visible, textarea:focus-visible, select:focus-visible,
+button:focus-visible, a:focus-visible {
+  outline: 2px solid var(--beacon);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
